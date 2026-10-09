@@ -1,0 +1,521 @@
+/* ------------------------------------------------------------------
+   Tokens
+   Deep lagoon base with pools of water-coloured light; glass panels
+   refract the pools. Light scheme follows the OS.
+------------------------------------------------------------------- */
+:root {
+  --lagoon: #0b3a4a;      /* base water */
+  --abyss: #082a36;       /* deepest edge of the base gradient */
+  --aqua: #46e0cf;        /* primary light pool / accent */
+  --sky: #8aa8ff;         /* secondary pool */
+  --iris: #b48cff;        /* tertiary pool */
+  --sun: #ffc58a;         /* warm caustic, used sparingly */
+
+  --ink: #eef8fa;
+  --ink-soft: rgba(238, 248, 250, 0.74);
+  --ink-faint: rgba(238, 248, 250, 0.52);
+
+  --glass-fill: rgba(9, 46, 60, 0.36);
+  --glass-fill-strong: rgba(255, 255, 255, 0.12);
+  --glass-edge: rgba(255, 255, 255, 0.28);
+  --glass-edge-dim: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 20px 50px -20px rgba(2, 20, 28, 0.6);
+  --spec: rgba(255, 255, 255, 0.22);
+
+  --accent-ink: #062a35;
+  --accent-text: #8ff0e4;
+  --pool-opacity: 0.62;
+
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --r-xl: 36px;
+  --r-lg: 26px;
+  --r-md: 18px;
+  --r-pill: 999px;
+
+  --gutter: clamp(16px, 4vw, 40px);
+  --max: 1120px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --lagoon: #d7ecf1;
+    --abyss: #bfdde6;
+    --aqua: #2fc9b8;
+    --sky: #7d9cff;
+    --iris: #c3a2ff;
+    --sun: #ffb877;
+
+    --ink: #08303c;
+    --ink-soft: rgba(8, 48, 60, 0.78);
+    --ink-faint: rgba(8, 48, 60, 0.56);
+
+    --glass-fill: rgba(255, 255, 255, 0.42);
+    --glass-fill-strong: rgba(255, 255, 255, 0.6);
+    --glass-edge: rgba(255, 255, 255, 0.9);
+    --glass-edge-dim: rgba(255, 255, 255, 0.3);
+    --glass-shadow: 0 20px 50px -22px rgba(20, 70, 90, 0.35);
+    --spec: rgba(255, 255, 255, 0.7);
+
+    --accent-text: #0a6f66;
+    --pool-opacity: 0.55;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Base
+------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--ink);
+  background: radial-gradient(120% 90% at 50% 0%, var(--lagoon) 0%, var(--abyss) 100%) fixed;
+  background-color: var(--abyss);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; }
+
+:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -60px;
+  padding: 10px 16px;
+  border-radius: var(--r-pill);
+  background: var(--aqua);
+  color: var(--accent-ink);
+  font-weight: 600;
+  z-index: 100;
+  text-decoration: none;
+}
+.skip:focus { top: 16px; }
+
+/* ------------------------------------------------------------------
+   Light pools
+------------------------------------------------------------------- */
+.pools {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pool {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: var(--pool-opacity);
+  will-change: transform;
+}
+.p1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -10vmax; background: var(--aqua); animation: drift1 38s ease-in-out infinite alternate; }
+.p2 { width: 38vmax; height: 38vmax; right: -10vmax; top: 18vh; background: var(--sky); animation: drift2 46s ease-in-out infinite alternate; }
+.p3 { width: 34vmax; height: 34vmax; left: 22vw; bottom: -16vmax; background: var(--iris); animation: drift3 52s ease-in-out infinite alternate; }
+.p4 { width: 16vmax; height: 16vmax; right: 18vw; bottom: 12vh; background: var(--sun); opacity: calc(var(--pool-opacity) * 0.7); animation: drift2 60s ease-in-out infinite alternate-reverse; }
+
+@keyframes drift1 { to { transform: translate(14vw, 18vh) scale(1.1); } }
+@keyframes drift2 { to { transform: translate(-16vw, 22vh) scale(0.9); } }
+@keyframes drift3 { to { transform: translate(-10vw, -24vh) scale(1.15); } }
+
+/* ------------------------------------------------------------------
+   Glass material
+   Layers: tinted blur + saturation, a bright rim that fades toward
+   the bottom, an inner top highlight, and a pointer-following
+   specular spot (--mx / --my set in script.js).
+------------------------------------------------------------------- */
+.glass {
+  --mx: 30%;
+  --my: 0%;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(240px circle at var(--mx) var(--my), var(--spec), transparent 60%),
+    var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-edge),
+    inset 0 -1px 0 0 var(--glass-edge-dim),
+    inset 0 0 24px -8px rgba(255, 255, 255, 0.12),
+    var(--glass-shadow);
+}
+/* Rim: a gradient border drawn with a mask so it follows any radius. */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg, var(--glass-edge), var(--glass-edge-dim) 40%, var(--glass-edge-dim) 70%, var(--glass-edge));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 1;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--glass-fill-strong); }
+}
+
+/* ------------------------------------------------------------------
+   Nav
+------------------------------------------------------------------- */
+.nav-wrap {
+  position: sticky;
+  top: 14px;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--gutter);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: var(--r-pill);
+}
+.brand {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--aqua), var(--sky));
+  color: var(--accent-ink);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.nav ul { display: flex; list-style: none; gap: 2px; }
+.nav ul a {
+  display: block;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+.nav ul a:hover { color: var(--ink); background: var(--glass-fill); }
+.nav ul a[aria-current="true"] { color: var(--ink); background: var(--glass-fill-strong); }
+
+/* ------------------------------------------------------------------
+   Layout
+------------------------------------------------------------------- */
+main {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* Hero */
+.hero {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: clamp(32px, 6vw, 80px);
+  min-height: min(calc(100vh - 80px), 860px);
+  padding: clamp(48px, 8vh, 96px) 0 48px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 12px;
+  border-radius: var(--r-pill);
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--aqua);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aqua) 25%, transparent);
+}
+h1 {
+  margin: 28px 0 24px;
+  font-size: clamp(3.6rem, 10vw, 7.4rem);
+  line-height: 0.92;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variation-settings: "opsz" 96;
+  /* Type reads as poured liquid: the pools show through the letters. */
+  background: linear-gradient(170deg, var(--ink) 30%, color-mix(in srgb, var(--aqua) 70%, var(--ink)) 70%, var(--sky));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lede {
+  max-width: 34ch;
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 36px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  font-size: 0.98rem;
+  text-decoration: none;
+  transition: transform 0.25s cubic-bezier(.2,.8,.2,1.2);
+}
+.btn:hover { transform: translateY(-2px) scale(1.02); }
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background:
+    radial-gradient(160px circle at var(--mx) var(--my), rgba(255,255,255,0.45), transparent 60%),
+    linear-gradient(145deg, color-mix(in srgb, var(--aqua) 85%, transparent), color-mix(in srgb, var(--sky) 80%, transparent));
+  color: var(--accent-ink);
+}
+
+/* Portrait lens */
+.lens {
+  margin: 0;
+  padding: 14px;
+  border-radius: 44px;
+  justify-self: end;
+  width: min(100%, 460px);
+}
+.lens img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: 50% 20%;
+  border-radius: 32px;
+}
+.lens-tag {
+  position: absolute;
+  left: -28px;
+  bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 250px;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.lens-tag strong {
+  font-family: var(--display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+/* Impact strip */
+.impact-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-radius: var(--r-xl);
+  padding: 8px;
+}
+.impact-row p {
+  padding: 22px 22px 24px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.impact-row p + p { border-left: 1px solid var(--glass-edge-dim); }
+.impact-row strong {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--display);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+/* Sections */
+.section { padding: clamp(72px, 12vh, 120px) 0 0; }
+.section > h2, .split h2 {
+  font-size: clamp(2rem, 4.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+}
+
+/* Timeline */
+.timeline {
+  list-style: none;
+  display: grid;
+  gap: 20px;
+  position: relative;
+}
+.role {
+  padding: clamp(24px, 3.4vw, 36px);
+  border-radius: var(--r-lg);
+}
+.role-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 24px;
+}
+.role h3 { font-size: 1.45rem; line-height: 1.2; }
+.role h3 span { display: block; font-family: var(--body); font-size: 1rem; font-weight: 500; color: var(--accent-text); margin-top: 4px; letter-spacing: 0; }
+.when { font-size: 0.92rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.role-sum { margin-top: 10px; color: var(--ink-faint); }
+.role > ul:not(.tags) {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+  max-width: 76ch;
+  padding-left: 1.1em;
+  color: var(--ink-soft);
+}
+.role > ul li::marker { color: var(--aqua); }
+.role b { color: var(--ink); font-weight: 600; }
+
+.tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.tags li {
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--glass-fill);
+  box-shadow: inset 0 0 0 1px var(--glass-edge-dim);
+}
+
+/* Projects */
+.projects { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.project { padding: 32px; border-radius: var(--r-lg); }
+.project h3 { font-size: 1.4rem; line-height: 1.2; margin-bottom: 12px; }
+.project p { color: var(--ink-soft); max-width: 46ch; }
+
+/* Skills */
+.skills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px 40px;
+  padding: clamp(24px, 4vw, 44px);
+  border-radius: var(--r-xl);
+}
+.skill-group h3 { font-size: 1.05rem; margin-bottom: 14px; color: var(--ink); }
+.chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.chips li {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: var(--glass-fill-strong);
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px var(--glass-edge-dim);
+}
+
+/* Recognition + education */
+.split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; }
+.awards { list-style: none; display: grid; gap: 14px; }
+.awards li {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 20px 24px;
+  border-radius: var(--r-md);
+}
+.year { font-family: var(--display); font-weight: 600; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.awards h3 { font-size: 1.1rem; margin-bottom: 4px; }
+.awards p { font-size: 0.95rem; color: var(--ink-soft); }
+.edu { padding: 28px; border-radius: var(--r-lg); }
+.edu h3 { font-size: 1.3rem; margin-bottom: 6px; }
+.edu p { color: var(--ink-soft); }
+.edu .when { margin-top: 10px; }
+
+/* Contact */
+.contact {
+  margin: clamp(80px, 14vh, 140px) 0 0;
+  padding: clamp(36px, 6vw, 72px);
+  border-radius: 44px;
+  text-align: center;
+}
+.contact h2 { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -0.03em; }
+.contact p { max-width: 52ch; margin: 18px auto 0; color: var(--ink-soft); }
+.contact .actions { justify-content: center; }
+
+.foot {
+  padding: 48px var(--gutter) 40px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------
+   Page-load: the portrait lens settles in, nothing else animates.
+------------------------------------------------------------------- */
+.lens { animation: settle 1.1s cubic-bezier(.2,.8,.2,1) both 0.15s; }
+@keyframes settle {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* ------------------------------------------------------------------
+   Responsive
+------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; padding-top: 48px; }
+  .lens { justify-self: center; order: -1; width: min(100%, 380px); margin-bottom: 24px; }
+  .lens-tag { left: 50%; transform: translateX(-50%); bottom: -24px; max-width: 280px; width: max-content; }
+  .impact-row { grid-template-columns: 1fr 1fr; }
+  .impact-row p:nth-child(3) { border-left: 0; }
+  .impact-row p:nth-child(n+3) { border-top: 1px solid var(--glass-edge-dim); }
+  .skills { grid-template-columns: 1fr 1fr; }
+  .split { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  body { font-size: 1rem; }
+  .nav ul a { padding: 8px 10px; font-size: 0.88rem; }
+  .projects, .skills { grid-template-columns: 1fr; }
+  .impact-row { grid-template-columns: 1fr; }
+  .impact-row p + p { border-left: 0; border-top: 1px solid var(--glass-edge-dim); }
+  .awards li { grid-template-columns: 1fr; gap: 4px; }
+  .btn { flex: 1 1 auto; justify-content: center; }
+}
+@media (max-width: 380px) {
+  .nav ul a { padding: 8px 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .pool, .lens { animation: none; }
+  .btn { transition: none; }
+}
